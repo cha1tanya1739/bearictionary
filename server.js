@@ -8,17 +8,17 @@ const server = http.createServer((req, res) => {
   // Serve index.html
   if (req.url === "/") {
     res.writeHead(200, { "Content-Type": "text/html" });
-    fs.createReadStream(path.join(__dirname, "public", "index.html")).pipe(res);
+    fs.createReadStream(path.join(__dirname, "index.html")).pipe(res);
   }
   // Serve style.css
   else if (req.url === "/style.css") {
     res.writeHead(200, { "Content-Type": "text/css" });
-    fs.createReadStream(path.join(__dirname, "public", "style.css")).pipe(res);
+    fs.createReadStream(path.join(__dirname, "style.css")).pipe(res);
   }
   // Serve app.js
   else if (req.url === "/app.js") {
     res.writeHead(200, { "Content-Type": "application/javascript" });
-    fs.createReadStream(path.join(__dirname, "public", "app.js")).pipe(res);
+    fs.createReadStream(path.join(__dirname, "app.js")).pipe(res);
   }
   // Return a 404 for other requests
   else {
