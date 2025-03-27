@@ -1,62 +1,4 @@
-const WebSocket = require("ws");
-const http = require("http");
-const path = require("path");
-const fs = require("fs");
-
-// Create an HTTP server to serve static files
-const server = http.createServer((req, res) => {
-  // Serve index.html
-  if (req.url === "/") {
-    res.writeHead(200, { "Content-Type": "text/html" });
-    fs.createReadStream(path.join(__dirname, "index.html")).pipe(res);
-  }
-  // Serve style.css
-  else if (req.url === "/style.css") {
-    res.writeHead(200, { "Content-Type": "text/css" });
-    fs.createReadStream(path.join(__dirname, "style.css")).pipe(res);
-  }
-  // Serve app.js
-  else if (req.url === "/app.js") {
-    res.writeHead(200, { "Content-Type": "application/javascript" });
-    fs.createReadStream(path.join(__dirname, "app.js")).pipe(res);
-  }
-  // Return a 404 for other requests
-  else {
-    res.writeHead(404);
-    res.end();
-  }
-});
-
-// Create the WebSocket server attached to the HTTP server
-const wss = new WebSocket.Server({ server });
-
-// When a client connects to the WebSocket server
-wss.on("connection", (ws) => {
-  console.log("A user connected");
-
-  // Handle incoming messages from clients
-  ws.on("message", (message) => {
-    console.log("Received message: %s", message);
-    // Broadcast the message to all other clients
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(message);
-      }
-    });
-  });
-
-  // Handle client disconnections
-  ws.on("close", () => {
-    console.log("A user disconnected");
-  });
-});
-
-// Start the server on port 8080
-server.listen(8080, () => {
-  console.log("Server is running on http://localhost:8080");
-});
-
-// Client-side script integration
+// Create a WebSocket connection to the server
 const socket = new WebSocket("ws://localhost:8080");
 
 // DOM elements
@@ -64,13 +6,12 @@ const chatBox = document.getElementById("chat-box");
 const messageInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 const usernameRadioButtons = document.getElementsByName("username");
+const cursor = document.querySelector("#cursor");
 
 // Function to get the selected username from the radio buttons
 function getSelectedUsername() {
-  for (let i = 0; i < usernameRadioButtons.length; i++) {
-    if (usernameRadioButtons[i].checked) {
-      return usernameRadioButtons[i].value;
-    }
+  for (let radio of usernameRadioButtons) {
+    if (radio.checked) return radio.value;
   }
   return "Omochi"; // Default username
 }
@@ -82,10 +23,7 @@ socket.onmessage = (event) => {
   // Ensure the message is a string
   if (message instanceof Blob) {
     const reader = new FileReader();
-    reader.onloadend = () => {
-      message = reader.result;
-      displayMessage(message);
-    };
+    reader.onload = () => displayMessage(reader.result);
     reader.readAsText(message);
   } else {
     displayMessage(message);
@@ -94,81 +32,67 @@ socket.onmessage = (event) => {
 
 // Function to display the message
 function displayMessage(message) {
+  if (!chatBox) return;
+
   const messageElement = document.createElement("div");
+
+  // Extract sender name and content
   const [sender, ...msgParts] = message.split(":");
   const msgContent = msgParts.join(":").trim();
 
+  // Format sender's name
   const senderNameElement = document.createElement("span");
   senderNameElement.textContent = `${sender}: `;
   senderNameElement.classList.add("sender-name");
 
+  // Create message content element
   const messageTextElement = document.createElement("span");
   messageTextElement.textContent = msgContent;
 
+  // Append elements to chatBox
   messageElement.appendChild(senderNameElement);
   messageElement.appendChild(messageTextElement);
-
   chatBox.appendChild(messageElement);
-  chatBox.scrollTop = chatBox.scrollHeight;
+  chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to the latest message
 }
 
-// Send a message to the server when the send button is clicked
-sendButton.addEventListener("click", () => {
-  const message = messageInput.value;
+// Send a message when the send button is clicked
+sendButton?.addEventListener("click", () => {
+  const message = messageInput.value.trim();
   if (message) {
-    const username = getSelectedUsername();
-    const formattedMessage = `${username}: ${message}`;
-    socket.send(formattedMessage);
+    socket.send(`${getSelectedUsername()}: ${message}`);
     messageInput.value = "";
   }
 });
 
-// Allow sending message with Enter key
-messageInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    sendButton.click();
-  }
+// Allow sending messages with Enter key
+messageInput?.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendButton?.click();
 });
 
-// Cursor animation
-var cursor = document.querySelector("#cursor");
+// Cursor animations
+if (cursor) {
+  const cursorFollower = (event) => {
+    cursor.style.top = `${event.pageY}px`;
+    cursor.style.left = `${event.pageX}px`;
+  };
 
-const cursorFollower = (debts) => {
-  cursor.style.top = debts.pageY + "px";
-  cursor.style.left = debts.pageX + "px";
-  cursor.animate(
-    {
-      left: debts.pageX + "px",
-      top: debts.pageY + "px",
-    },
-    350
-  );
-};
+  const cursorClickTrue = () => {
+    cursor.style.width = "22px";
+    cursor.style.height = "22px";
+  };
 
-const cursorClickTrue = () => {
-  cursor.style.width = "22px";
-  cursor.style.height = "22px";
-};
+  const cursorClickFalse = () => {
+    cursor.style.width = "12px";
+    cursor.style.height = "12px";
+  };
 
-const cursorClickFalse = () => {
-  cursor.style.width = "12px";
-  cursor.style.height = "12px";
-};
+  const cursorEnter = () => (cursor.style.opacity = 1);
+  const cursorLeave = () => (cursor.style.opacity = 0);
 
-const cursorEnter = () => {
-  cursor.style.opacity = 1;
-};
-
-const cursorLeave = () => {
-  cursor.style.opacity = 0;
-};
-
-const cursorInitialisation = () => {
   document.addEventListener("mousemove", cursorFollower);
   document.addEventListener("mousedown", cursorClickTrue);
   document.addEventListener("mouseup", cursorClickFalse);
   document.addEventListener("mouseleave", cursorLeave);
   document.addEventListener("mouseenter", cursorEnter);
-};
-
-cursorInitialisation();
+}
