@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BEARICTIONARY</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="cursor"></div>
+    <div id="app-name">BEARICTIONARY</div>
+
+    <div id="chat-container">
+      <div id="chat-box"></div>
+
+      <div id="username-container">
+        <label>
+          <input type="radio" name="username" value="Omochi" checked /> Omochi
+        </label>
+        <label>
+          <input type="radio" name="username" value="Kanpeki" /> Kanpeki
+        </label>
+        <label>
+          <input type="radio" name="username" value="Someone else" /> Someone
+          else
+        </label>
+      </div>
+
+      <input type="text" id="message-input" placeholder="Type a message..." />
+      <button id="send-button">Send</button>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
