@@ -1,4 +1,62 @@
-// Create a WebSocket connection to the server
+const WebSocket = require("ws");
+const http = require("http");
+const path = require("path");
+const fs = require("fs");
+
+// Create an HTTP server to serve static files
+const server = http.createServer((req, res) => {
+  // Serve index.html
+  if (req.url === "/") {
+    res.writeHead(200, { "Content-Type": "text/html" });
+    fs.createReadStream(path.join(__dirname, "index.html")).pipe(res);
+  }
+  // Serve style.css
+  else if (req.url === "/style.css") {
+    res.writeHead(200, { "Content-Type": "text/css" });
+    fs.createReadStream(path.join(__dirname, "style.css")).pipe(res);
+  }
+  // Serve app.js
+  else if (req.url === "/app.js") {
+    res.writeHead(200, { "Content-Type": "application/javascript" });
+    fs.createReadStream(path.join(__dirname, "app.js")).pipe(res);
+  }
+  // Return a 404 for other requests
+  else {
+    res.writeHead(404);
+    res.end();
+  }
+});
+
+// Create the WebSocket server attached to the HTTP server
+const wss = new WebSocket.Server({ server });
+
+// When a client connects to the WebSocket server
+wss.on("connection", (ws) => {
+  console.log("A user connected");
+
+  // Handle incoming messages from clients
+  ws.on("message", (message) => {
+    console.log("Received message: %s", message);
+    // Broadcast the message to all other clients
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  });
+
+  // Handle client disconnections
+  ws.on("close", () => {
+    console.log("A user disconnected");
+  });
+});
+
+// Start the server on port 8080
+server.listen(8080, () => {
+  console.log("Server is running on http://localhost:8080");
+});
+
+// Client-side script integration
 const socket = new WebSocket("ws://localhost:8080");
 
 // DOM elements
@@ -23,17 +81,13 @@ socket.onmessage = (event) => {
 
   // Ensure the message is a string
   if (message instanceof Blob) {
-    // If it's a Blob, convert it to a string
     const reader = new FileReader();
     reader.onloadend = () => {
-      message = reader.result; // The Blob is now a string
-
-      // Process the message (split by ":")
+      message = reader.result;
       displayMessage(message);
     };
     reader.readAsText(message);
   } else {
-    // If it's already a string, process it directly
     displayMessage(message);
   }
 };
@@ -41,40 +95,31 @@ socket.onmessage = (event) => {
 // Function to display the message
 function displayMessage(message) {
   const messageElement = document.createElement("div");
-
-  // Split the message into the sender's name and the message content
   const [sender, ...msgParts] = message.split(":");
   const msgContent = msgParts.join(":").trim();
 
-  // Format the sender's name with a different color
   const senderNameElement = document.createElement("span");
   senderNameElement.textContent = `${sender}: `;
-  senderNameElement.classList.add("sender-name"); // Add a class to style it
+  senderNameElement.classList.add("sender-name");
 
-  // Create the message content element
   const messageTextElement = document.createElement("span");
   messageTextElement.textContent = msgContent;
 
-  // Append the sender's name and the message content
   messageElement.appendChild(senderNameElement);
   messageElement.appendChild(messageTextElement);
 
-  // Add the message to the chat
   chatBox.appendChild(messageElement);
-  chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the latest message
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 // Send a message to the server when the send button is clicked
 sendButton.addEventListener("click", () => {
   const message = messageInput.value;
   if (message) {
-    // Get the selected username
     const username = getSelectedUsername();
-
-    // Format the message with the username as prefix
     const formattedMessage = `${username}: ${message}`;
-    socket.send(formattedMessage); // Send the formatted message
-    messageInput.value = ""; // Clear the input field
+    socket.send(formattedMessage);
+    messageInput.value = "";
   }
 });
 
@@ -85,12 +130,12 @@ messageInput.addEventListener("keypress", (e) => {
   }
 });
 
+// Cursor animation
 var cursor = document.querySelector("#cursor");
 
 const cursorFollower = (debts) => {
   cursor.style.top = debts.pageY + "px";
   cursor.style.left = debts.pageX + "px";
-
   cursor.animate(
     {
       left: debts.pageX + "px",
